@@ -1,0 +1,2 @@
+# linhtinh
+Code linh tinh
