@@ -1,83 +1,95 @@
 let isRun = false;
-let timeoutId = null;
+let timeouts = [];
+// Lắng nghe sự kiện khi extension được bật
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	if (message.action === "start") {
 		if (!isRun) {
+			isRun = true;
+			Click("Start Node");
+			onLoop();
 			sendResponse("Script started!");
 		}
 	}
 	else if (message.action === "stop") {
+		if (isRun) {
+			isRun = false;
+			clearTimeouts();
+		}
 		sendResponse ("Script stoped!");
 	}
 });
-function onLoop() {
-    timeoutId = setTimeout(() => {
-      Click("Stop Node");
-    }, 1*60*1000);
-};
 
-function Click(node, claimCout = 0) {
-	if (!isRun) return;
-	// Lấy tất cả tab thỏa url
-	chrome.tabs.query({url: "https://swarm.neurolov.ai/*"}, (tabs) => {
-		// Duyệt qua tất cả
-		tabs.forEach((tab) => {
-			// Đẩy script vào tab
-			chrome.scripting.executeScript({
-				target: { tabId: tab.id },
-				func: (btnText) => {
-					// Gán vào buttons tất cả button có selector 'button.inline-flex.rounded-full.font-medium'
-					const buttons = document.querySelectorAll('button.inline-flex.rounded-full.font-medium');
-					// Duyệt qua tất cả button
-					buttons.forEach((btn) => {
-						//Check text của button
-						if (btn.textContent.trim() === btnText) {
-							btn.click();
-							Log("Click" + btnText);
-							return "Clicked";
-						}
-					});
-					return "Not Found";
-				},
-				// Dùng args để bridge tham số lên tab vì không thể truyền trực tiếp
-				args: ["Claim Rewards"]
-			}, (results) => {
-				// Kiểm tra kết quả trả về
-				if (!results || !results[0]) return;
-				const status = results[0].result;
-				if (status === "Clicked") {
-					if (claimCout == 3) {
-						Log("Claim hoài đéo được, cook!");
-						isRun = false;
-					}
-					setTimeout(() => {
-						Click(node, claimCout + 1);
-					}, 300000); // 5 phút
-				} else {
-					// Đẩy script vào tab
-					chrome.scripting.executeScript({
-						target: { tabId: tab.id },
-						func: (btnText) => {
-							// Gán vào buttons tất cả button có selector 'button.inline-flex.rounded-full.font-medium'
-							const buttons = document.querySelectorAll('button.inline-flex.rounded-full.font-medium');
-							// Duyệt qua tất cả button
-							buttons.forEach((btn) => {
-								//Check text của button
-								if (btn.textContent.trim() === btnText) {
-									btn.click();
-									Log("Click" + btnText);
-									return "Clicked";
-								}
-							});
-						},
-						// Dùng args để bridge tham số lên tab vì không thể truyền trực tiếp
-						args: [node]
-					});
-				}
-			});
-		});
-	});
-};
+function onLoop() {
+    addTimeout(() => {
+    	Click("Stop Node");
+		addTimeout(() => {
+			Click("Start Node");
+			if (isRun) onLoop();
+		}, 30*60*1000); // 30 phút
+    }, 238*60*1000); // 238 phút
+	// Lặp lại sau 238 phút
+}
+
+function Click(node, claimCount = 0) {
+    if (!isRun) return;
+
+    // Lấy tất cả tab thỏa url
+    chrome.tabs.query({ url: "https://swarm.neurolov.ai/*" }, (tabs) => {
+        tabs.forEach((tab) => {
+            // Thử click Claim Rewards trước
+            chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: (btnText) => {
+                    const buttons = document.querySelectorAll('button.inline-flex.rounded-full.font-medium');
+                    for (const btn of buttons) {
+                        if (btn.textContent.trim() === btnText) {
+                            btn.click();
+                            return btnText; // Trả về đúng text nút đã click
+                        }
+                    }
+                    return "Not Found";
+                },
+                args: ["Claim Rewards"]
+            }, (results) => {
+                if (!results || !results[0]) return;
+                const status = results[0].result;
+
+                if (status === "Claim Rewards") {
+                    Log("Click " + status);
+                    if (claimCount === 3) {
+                        Log("Claim hoài đéo được, cook!");
+                        isRun = false;
+                        return;
+                    }
+                    if (isRun) {
+                        addTimeout(() => {
+                            Click(node, claimCount + 1);
+                        }, 300000); // 5 phút
+                    }
+                } else {
+                    // Nếu không thấy Claim Rewards thì click node chính (Start/Stop)
+                    chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        func: (btnText) => {
+                            const buttons = document.querySelectorAll('button.inline-flex.rounded-full.font-medium');
+                            for (const btn of buttons) {
+                                if (btn.textContent.trim() === btnText) {
+                                    btn.click();
+                                    return "Click " + btnText;
+                                }
+                            }
+                            return "Not Found " + btnText;
+                        },
+                        args: [node]
+                    }, (results2) => {
+                        if (!results2 || !results2[0]) return;
+                        Log(results2[0].result);
+                    });
+                }
+            });
+        });
+    });
+}
 
 function Log(msg) {
 	const log = msg + " on " + new Date().toLocaleTimeString();
@@ -95,4 +107,15 @@ function Log(msg) {
 		// Gửi cho popup nếu nó đang mở
 		chrome.runtime.sendMessage({ type: "LOG", payload: log });
 	});
-};
+}
+
+function addTimeout(fn, delay) {
+    const id = setTimeout(fn, delay);
+    timeouts.push(id);
+    return id;
+}
+
+function clearTimeouts() {
+    timeouts.forEach(id => clearTimeout(id));
+    timeouts = [];
+}

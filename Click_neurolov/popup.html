@@ -1,15 +1,43 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Control</title>
-</head>
-<style>
-    body { font-family: sans-serif; padding: 10px; }
-    button { margin: 5px; padding: 6px 12px; cursor: pointer; }
+  <meta charset="UTF-8">
+  <title>Auto Node Control</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      width: 280px;
+      padding: 10px;
+    }
+    button {
+      padding: 6px 12px;
+      margin: 5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #startBtn { background: #4CAF50; color: white; }
+    #stopBtn { background: #F44336; color: white; }
+    #logs {
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      padding: 5px;
+      border-radius: 4px;
+    }
   </style>
+</head>
 <body>
+  <h3>Swarm Node Auto</h3>
   <button id="startBtn">Start</button>
   <button id="stopBtn">Stop</button>
+  
+  <h4>Logs</h4>
+  <div id="logs"></div>
+
   <script src="popup.js"></script>
 </body>
 </html>
