@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Auto Clicker on Neurolov Tab",
+  "version": "1.0",
+  "permissions": ["tabs","scripting"],
+  "host_permissions": ["https://swarm.neurolov.ai/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Auto Clicker",
+	"default_popup": "popup.html"
+  }
+}
